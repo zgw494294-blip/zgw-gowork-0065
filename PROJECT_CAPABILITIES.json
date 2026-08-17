@@ -1,0 +1,45 @@
+{
+  "business_features": [
+    {
+      "name": "版本生命周期管理",
+      "description": "掩模版版本经历起草、送审、试投、验证、启用，重新起草会使旧审核结论失效"
+    },
+    {
+      "name": "验证批次约束",
+      "description": "验证批次必须绑定送审版本的变更申请，且关键验证项未通过时禁止启用"
+    },
+    {
+      "name": "单一启用版本约束",
+      "description": "同一产品层级下只能有一个启用版本，新启用会使旧启用版本自动失效"
+    }
+  ],
+  "api_endpoints": [
+    {"method": "POST", "path": "/api/product-levels"},
+    {"method": "GET", "path": "/api/product-levels"},
+    {"method": "POST", "path": "/api/mask-versions"},
+    {"method": "GET", "path": "/api/mask-versions"},
+    {"method": "POST", "path": "/api/change-requests"},
+    {"method": "GET", "path": "/api/change-requests"},
+    {"method": "POST", "path": "/api/change-requests/{id}/submit"},
+    {"method": "POST", "path": "/api/verification-batches"},
+    {"method": "POST", "path": "/api/verification-batches/{id}/result"},
+    {"method": "POST", "path": "/api/change-requests/{id}/audit"},
+    {"method": "POST", "path": "/api/mask-versions/{id}/enable"},
+    {"method": "POST", "path": "/api/mask-versions/{id}/redraft"},
+    {"method": "GET", "path": "/api/summary/diff"},
+    {"method": "GET", "path": "/api/export/pending-audit"}
+  ],
+  "persistence": {
+    "enabled": true,
+    "type": "file",
+    "path": "可配置路径",
+    "atomic_write": true,
+    "startup_recovery": true
+  },
+  "non_api_capabilities": [
+    "启动时从文件恢复状态",
+    "原子写入防止数据损坏",
+    "版本差异摘要计算",
+    "待审核清单CSV导出"
+  ]
+}
