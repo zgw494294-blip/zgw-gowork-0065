@@ -164,3 +164,50 @@ func TestDerivedDiffSummary(t *testing.T) {
 	_ = mv1
 	_ = mv2
 }
+
+func TestVerificationResultDoesNotUpdateUnrelatedVersion(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	unrelatedLevel, err := svc.CreateProductLevel(ctx, "unrelated-level")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelated, err := svc.CreateMaskVersion(ctx, unrelatedLevel.ID, 1, "unrelated")
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetLevel, err := svc.CreateProductLevel(ctx, "target-level")
+	if err != nil {
+		t.Fatal(err)
+	}
+	target, err := svc.CreateMaskVersion(ctx, targetLevel.ID, 1, "target")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cr, err := svc.CreateChangeRequest(ctx, target.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SubmitChangeRequest(ctx, cr.ID); err != nil {
+		t.Fatal(err)
+	}
+	batch, err := svc.CreateVerificationBatch(ctx, cr.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetVerificationResult(ctx, batch.ID, true, "passed"); err != nil {
+		t.Fatal(err)
+	}
+
+	snap := svc.store.GetSnapshot()
+	statuses := make(map[string]domain.MaskVersionStatus)
+	for _, version := range snap.MaskVersions {
+		statuses[version.ID] = version.Status
+	}
+	if statuses[target.ID] != domain.StatusVerified {
+		t.Fatalf("target version status = %s, want verified", statuses[target.ID])
+	}
+	if statuses[unrelated.ID] != domain.StatusDraft {
+		t.Fatalf("unrelated version status = %s, want draft", statuses[unrelated.ID])
+	}
+}
