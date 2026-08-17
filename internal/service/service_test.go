@@ -164,3 +164,34 @@ func TestDerivedDiffSummary(t *testing.T) {
 	_ = mv1
 	_ = mv2
 }
+
+func TestFailedVerificationCannotBeAudited(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	pl, err := svc.CreateProductLevel(ctx, "failed-verification")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mv, err := svc.CreateMaskVersion(ctx, pl.ID, 1, "trial")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cr, err := svc.CreateChangeRequest(ctx, mv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SubmitChangeRequest(ctx, cr.ID); err != nil {
+		t.Fatal(err)
+	}
+	batch, err := svc.CreateVerificationBatch(ctx, cr.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetVerificationResult(ctx, batch.ID, false, "critical item failed"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.AuditChangeRequest(ctx, cr.ID, domain.ConclusionPass, "must not pass"); err == nil {
+		t.Fatal("failed verification request was accepted for audit")
+	}
+}
