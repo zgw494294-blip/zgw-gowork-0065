@@ -317,6 +317,12 @@ func (s *Service) AuditChangeRequest(ctx context.Context, crID string, conclusio
 	if mv == nil {
 		return errors.New("mask version not found")
 	}
+	// 先校验结论，避免无效结论导致部分状态被持久化
+	switch conclusion {
+	case domain.ConclusionPass, domain.ConclusionFail, domain.ConclusionRedraft:
+	default:
+		return errors.New("invalid conclusion")
+	}
 	record := &domain.AuditConclusionRecord{
 		ID:              fmt.Sprintf("ac_%d", time.Now().UnixNano()),
 		ChangeRequestID: crID,
@@ -337,11 +343,6 @@ func (s *Service) AuditChangeRequest(ctx context.Context, crID string, conclusio
 		mv.Status = domain.StatusSuperseded
 	case domain.ConclusionRedraft:
 		mv.Status = domain.StatusDraft
-	default:
-		if err := s.store.SaveSnapshot(snap); err != nil {
-			return err
-		}
-		return errors.New("invalid conclusion")
 	}
 	mv.UpdatedAt = time.Now()
 	if err := s.store.SaveSnapshot(snap); err != nil {
