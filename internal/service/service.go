@@ -279,7 +279,8 @@ func (s *Service) SetVerificationResult(ctx context.Context, batchID string, cri
 		mv.Status = domain.StatusVerified
 	} else {
 		batch.Status = "failed"
-		mv.Status = domain.StatusSubmitted // 回到送审，但保持记录
+		cr.Status = domain.CRSubmitted // 回到送审，禁止审核，可重新创建验证批次
+		mv.Status = domain.StatusSubmitted
 	}
 	cr.UpdatedAt = time.Now()
 	mv.UpdatedAt = time.Now()
