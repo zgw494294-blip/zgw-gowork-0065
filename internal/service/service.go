@@ -338,6 +338,9 @@ func (s *Service) AuditChangeRequest(ctx context.Context, crID string, conclusio
 	case domain.ConclusionRedraft:
 		mv.Status = domain.StatusDraft
 	default:
+		if err := s.store.SaveSnapshot(snap); err != nil {
+			return err
+		}
 		return errors.New("invalid conclusion")
 	}
 	mv.UpdatedAt = time.Now()

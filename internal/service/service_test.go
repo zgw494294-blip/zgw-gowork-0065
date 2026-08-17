@@ -164,3 +164,45 @@ func TestDerivedDiffSummary(t *testing.T) {
 	_ = mv1
 	_ = mv2
 }
+
+func TestRejectedAuditDoesNotPersistPartialState(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	pl, err := svc.CreateProductLevel(ctx, "atomic-audit")
+	if err != nil {
+		t.Fatal(err)
+	}
+	mv, err := svc.CreateMaskVersion(ctx, pl.ID, 1, "verified")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cr, err := svc.CreateChangeRequest(ctx, mv.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SubmitChangeRequest(ctx, cr.ID); err != nil {
+		t.Fatal(err)
+	}
+	batch, err := svc.CreateVerificationBatch(ctx, cr.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.SetVerificationResult(ctx, batch.ID, true, "passed"); err != nil {
+		t.Fatal(err)
+	}
+
+	err = svc.AuditChangeRequest(ctx, cr.ID, domain.AuditConclusion("unsupported"), "invalid")
+	if err == nil {
+		t.Fatal("unsupported audit conclusion was accepted")
+	}
+	snap := svc.store.GetSnapshot()
+	if len(snap.AuditRecords) != 0 {
+		t.Fatalf("rejected audit persisted %d records", len(snap.AuditRecords))
+	}
+	if snap.ChangeRequests[0].Status != domain.CRVerified || snap.ChangeRequests[0].AuditResult != "" {
+		t.Fatalf("rejected audit changed request to status=%s result=%s", snap.ChangeRequests[0].Status, snap.ChangeRequests[0].AuditResult)
+	}
+	if snap.MaskVersions[0].Status != domain.StatusVerified {
+		t.Fatalf("rejected audit changed version to %s", snap.MaskVersions[0].Status)
+	}
+}
