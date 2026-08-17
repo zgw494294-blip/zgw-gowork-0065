@@ -217,7 +217,7 @@ func (s *Service) CreateVerificationBatch(ctx context.Context, crID string) (*do
 	batch := &domain.VerificationBatch{
 		ID:              fmt.Sprintf("vb_%d", time.Now().UnixNano()),
 		ChangeRequestID: crID,
-		MaskVersionID:   snap.MaskVersions[0].ID,
+		MaskVersionID:   mv.ID,
 		Status:          "pending",
 		CreatedAt:       time.Now(),
 		UpdatedAt:       time.Now(),
