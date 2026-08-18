@@ -400,7 +400,7 @@ func (s *Service) RedraftMaskVersion(ctx context.Context, mvID string) error {
 	}
 	// 使所有相关变更申请的审核结论失效
 	for _, cr := range snap.ChangeRequests {
-		if cr.Status == domain.CRAudited {
+		if cr.MaskVersionID == mvID && cr.Status == domain.CRAudited {
 			cr.AuditResult = ""
 			cr.AuditReason = "redrafted"
 			cr.UpdatedAt = time.Now()
