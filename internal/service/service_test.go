@@ -164,3 +164,50 @@ func TestDerivedDiffSummary(t *testing.T) {
 	_ = mv1
 	_ = mv2
 }
+
+func TestRedraftPreservesOtherVersionAudit(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	pl, err := svc.CreateProductLevel(ctx, "version-isolation")
+	if err != nil {
+		t.Fatal(err)
+	}
+	prepareAudited := func(version int) (*domain.MaskVersion, *domain.ChangeRequest) {
+		t.Helper()
+		mv, err := svc.CreateMaskVersion(ctx, pl.ID, version, "audited")
+		if err != nil {
+			t.Fatal(err)
+		}
+		cr, err := svc.CreateChangeRequest(ctx, mv.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.SubmitChangeRequest(ctx, cr.ID); err != nil {
+			t.Fatal(err)
+		}
+		batch, err := svc.CreateVerificationBatch(ctx, cr.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.SetVerificationResult(ctx, batch.ID, true, "passed"); err != nil {
+			t.Fatal(err)
+		}
+		if err := svc.AuditChangeRequest(ctx, cr.ID, domain.ConclusionPass, "approved"); err != nil {
+			t.Fatal(err)
+		}
+		return mv, cr
+	}
+
+	_, firstRequest := prepareAudited(1)
+	secondVersion, _ := prepareAudited(2)
+	if err := svc.RedraftMaskVersion(ctx, secondVersion.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	snap := svc.store.GetSnapshot()
+	for _, cr := range snap.ChangeRequests {
+		if cr.ID == firstRequest.ID && cr.AuditResult != domain.ConclusionPass {
+			t.Fatalf("redrafting another version cleared audit result: %q", cr.AuditResult)
+		}
+	}
+}
