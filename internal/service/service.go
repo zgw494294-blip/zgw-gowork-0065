@@ -427,7 +427,7 @@ func (s *Service) DiffSummary(ctx context.Context, levelID string) (map[string]i
 	if len(versions) == 0 {
 		return map[string]interface{}{"level_id": levelID, "versions": []interface{}{}}, nil
 	}
-	sort.Slice(versions, func(i, j int) bool { return versions[i].Version < versions[j].Version })
+	sort.Slice(versions, func(i, j int) bool { return versions[i].UpdatedAt.Before(versions[j].UpdatedAt) })
 	type versionItem struct {
 		ID          string `json:"id"`
 		Version     int    `json:"version"`

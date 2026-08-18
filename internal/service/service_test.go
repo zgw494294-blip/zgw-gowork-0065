@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"maskreview/internal/domain"
 	"maskreview/internal/store"
@@ -163,4 +165,46 @@ func TestDerivedDiffSummary(t *testing.T) {
 	}
 	_ = mv1
 	_ = mv2
+}
+
+func TestDiffSummaryOrdersByVersionAfterStatusChange(t *testing.T) {
+	svc, _ := newTestService(t)
+	ctx := context.Background()
+	pl, err := svc.CreateProductLevel(ctx, "summary-order")
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := svc.CreateMaskVersion(ctx, pl.ID, 1, "first")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.CreateMaskVersion(ctx, pl.ID, 2, "second"); err != nil {
+		t.Fatal(err)
+	}
+	cr, err := svc.CreateChangeRequest(ctx, first.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(2 * time.Millisecond)
+	if err := svc.SubmitChangeRequest(ctx, cr.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	summary, err := svc.DiffSummary(ctx, pl.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.Marshal(summary["versions"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var versions []struct {
+		Version int `json:"version"`
+	}
+	if err := json.Unmarshal(data, &versions); err != nil {
+		t.Fatal(err)
+	}
+	if len(versions) != 2 || versions[0].Version != 1 || versions[1].Version != 2 {
+		t.Fatalf("summary versions out of order: %+v", versions)
+	}
 }
